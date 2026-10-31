@@ -1,0 +1,14 @@
+{application, sidechain, [
+    {description, "Hear your BEAM"},
+    {vsn, "0.1.0"},
+    {registered, []},
+    {mod, {sidechain_app, []}},
+    {applications, [
+        kernel,
+        stdlib
+    ]},
+    {env, []},
+    {modules, []},
+    {licenses, ["MIT"]},
+    {links, []}
+ ]}.
