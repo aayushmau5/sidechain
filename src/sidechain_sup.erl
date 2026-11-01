@@ -27,11 +27,16 @@ start_link() ->
 %%                  modules => modules()}   % optional
 init([]) ->
     SupFlags = #{
-        strategy => one_for_all,
-        intensity => 0,
+        strategy => one_for_one,
+        intensity => 5,
         period => 1
     },
-    ChildSpecs = [],
+    ChildSpecs = [
+        #{
+            id => sidechain_sender,
+            start => {sidechain_sender, start_link, [[]]}
+        }
+    ],
     {ok, {SupFlags, ChildSpecs}}.
 
 %% internal functions
