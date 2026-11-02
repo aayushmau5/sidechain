@@ -5,7 +5,8 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
 
 -define(SERVER, ?MODULE).
--define(TICK_RATE, 100). % 100ms
+% 100ms
+-define(TICK_RATE, 100).
 -define(OSC_NEW, <<"/s_new">>).
 -define(OSC_DEF, <<"pulse">>).
 -define(OSC_FREE, <<"/n_free">>).
@@ -36,7 +37,6 @@ handle_info(tick, #{scheduler_sample := S1} = State) ->
     sidechain_sender:send(?OSC_UPDATE, [?OSC_NODE_ID, <<"rate">>, Rate]),
     erlang:send_after(?TICK_RATE, self(), tick),
     {noreply, State#{scheduler_sample := S2}};
-
 handle_info(_Msg, State) ->
     {noreply, State}.
 

@@ -42,14 +42,17 @@ handle_call(_Msg, _From, State) ->
 handle_cast({osc, Path, Args}, #state{socket = Socket} = State) ->
     ok = gen_udp:send(Socket, ?HOST, ?PORT, sidechain_osc:encode_message(Path, Args)),
     {noreply, State};
-
 handle_cast({osc_bundle, UnixMicros, Messages}, #state{socket = Socket} = State) ->
-    ok = gen_udp:send(Socket, ?HOST, ?PORT, sidechain_osc:encode_bundle(sidechain_osc:timetag(UnixMicros), Messages)),
+    ok = gen_udp:send(
+        Socket,
+        ?HOST,
+        ?PORT,
+        sidechain_osc:encode_bundle(sidechain_osc:timetag(UnixMicros), Messages)
+    ),
     {noreply, State}.
 
 handle_info({udp, Socket, _IP, _Port, Data}, #state{socket = Socket} = State) ->
     ?LOG_WARNING("~p", [Data]),
     {noreply, State};
-
 handle_info(_Msg, State) ->
     {noreply, State}.

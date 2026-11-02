@@ -1,6 +1,6 @@
 -module(sidechain_metronome).
 -behaviour(gen_server).
--moduledoc("A gen_server that pings on every beat at 120 BPM.").
+-moduledoc "A gen_server that pings on every beat at 120 BPM.".
 % 120 beat per minute = 120 / 60 = 2 beats per second
 % 1 beat every 500ms
 % Lookahead: 100ms == Send pings 100ms early
@@ -29,11 +29,12 @@ handle_cast(_Msg, State) ->
 
 handle_info(tick, #{next_beat := Next, beat := Beat} = State) ->
     UnixMicros = (Next + erlang:time_offset(millisecond)) * 1000,
-    sidechain_sender:send_bundle(UnixMicros, [{<<"/s_new">>, [<<"ping">>, -1, 0, 1, <<"freq">>, freq(Beat)]}]),
+    sidechain_sender:send_bundle(UnixMicros, [
+        {<<"/s_new">>, [<<"ping">>, -1, 0, 1, <<"freq">>, freq(Beat)]}
+    ]),
     NewNext = Next + ?INTERVAL,
     schedule_wake(NewNext),
     {noreply, State#{next_beat := NewNext, beat := Beat + 1}};
-
 handle_info(_Msg, State) ->
     {noreply, State}.
 

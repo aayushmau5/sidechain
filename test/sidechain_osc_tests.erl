@@ -43,14 +43,23 @@ type_tag_test() ->
     ?assertEqual(<<",siif", 0, 0, 0>>, sidechain_osc:type_tag([$s, $i, $i, $f])).
 
 encode_message_test() ->
-    Decoded1 = binary:decode_hex(<<"2f735f6e657700002c7369696900000064656661756c7400000003e80000000000000001">>),
+    Decoded1 = binary:decode_hex(
+        <<"2f735f6e657700002c7369696900000064656661756c7400000003e80000000000000001">>
+    ),
     ?assertEqual(Decoded1, sidechain_osc:encode_message(<<"/s_new">>, [<<"default">>, 1000, 0, 1])),
 
-    Decoded2 = binary:decode_hex(<<"2f735f6e657700002c7369696900000064656661756c7400ffffffff0000000000000001">>),
+    Decoded2 = binary:decode_hex(
+        <<"2f735f6e657700002c7369696900000064656661756c7400ffffffff0000000000000001">>
+    ),
     ?assertEqual(Decoded2, sidechain_osc:encode_message(<<"/s_new">>, [<<"default">>, -1, 0, 1])),
 
-    Decoded3 = binary:decode_hex(<<"2f735f6e657700002c7369696973660070696e6700000000ffffffff0000000000000001667265710000000043dc0000">>),
-    ?assertEqual(Decoded3, sidechain_osc:encode_message(<<"/s_new">>, [<<"ping">>, -1, 0, 1, <<"freq">>, 440.0])),
+    Decoded3 = binary:decode_hex(
+        <<"2f735f6e657700002c7369696973660070696e6700000000ffffffff0000000000000001667265710000000043dc0000">>
+    ),
+    ?assertEqual(
+        Decoded3,
+        sidechain_osc:encode_message(<<"/s_new">>, [<<"ping">>, -1, 0, 1, <<"freq">>, 440.0])
+    ),
 
     Decoded4 = binary:decode_hex(<<"2f6e5f66726565002c690000000003e8">>),
     ?assertEqual(Decoded4, sidechain_osc:encode_message(<<"/n_free">>, [1000])),

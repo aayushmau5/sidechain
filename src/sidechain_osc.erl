@@ -23,7 +23,7 @@ type_tag(Types) ->
     L = list_to_binary(Types),
     pad(<<",", L/binary>>).
 
--doc("Pads the binary (string) with zero bytes").
+-doc "Pads the binary (string) with zero bytes".
 -spec pad(binary()) -> binary().
 pad(Bin) ->
     Size = byte_size(Bin),
