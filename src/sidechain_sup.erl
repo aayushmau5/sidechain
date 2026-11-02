@@ -35,6 +35,10 @@ init([]) ->
         #{
             id => sidechain_sender,
             start => {sidechain_sender, start_link, [[]]}
+        },
+        #{
+            id => sidechain_sampler,
+            start => {sidechain_sampler, start_link, [[]]}
         }
     ],
     {ok, {SupFlags, ChildSpecs}}.

@@ -20,8 +20,11 @@ start_link(Args) ->
 ping() ->
     send(<<"/s_new">>, [<<"ping">>, -1, 0, 1]).
 
+-spec send(binary(), [binary() | integer() | float()]) -> ok.
 send(Path, Args) ->
     gen_server:cast(?SERVER, {osc, Path, Args}).
+
+%% Internal
 
 init(_Args) ->
     {ok, Socket} = gen_udp:open(0, [binary, {active, true}]),
