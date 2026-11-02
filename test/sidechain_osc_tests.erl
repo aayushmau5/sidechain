@@ -60,3 +60,14 @@ encode_message_test() ->
 
     Decoded6 = binary:decode_hex(<<"2f737461747573002c000000">>),
     ?assertEqual(Decoded6, sidechain_osc:encode_message(<<"/status">>, [])).
+
+timetag_epoch_test() ->
+    ?assertEqual(<<2208988800:32, 0:32>>, sidechain_osc:timetag(0)).
+
+timetag_half_second_test() ->
+    ?assertEqual(<<2208988800:32, 2147483648:32>>, sidechain_osc:timetag(500000)).
+
+encode_bundle_test() ->
+    Status = binary:decode_hex(<<"2f737461747573002c000000">>),
+    Expected = <<"#bundle", 0, 1:64, 12:32, Status/binary>>,
+    ?assertEqual(Expected, sidechain_osc:encode_bundle(<<1:64>>, [{<<"/status">>, []}])).
