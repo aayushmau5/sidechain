@@ -13,4 +13,11 @@
         sig = SinOsc.ar(50 + (env * 100)) * env;
         Out.ar(0, sig * amp ! 2);
     }).add;
+
+    SynthDef(\breath, { |amp = 0.3, dur = 3|
+        var env, sig;
+        env = EnvGen.kr(Env([0, 1, 0], [dur * 0.4, dur * 0.6], \sin), doneAction: 2);
+        sig = LPF.ar(PinkNoise.ar, 400 + (env * 1600));
+        Out.ar(0, sig * env * amp ! 2);
+    }).add;
 )

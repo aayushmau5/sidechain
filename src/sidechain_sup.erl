@@ -43,6 +43,10 @@ init([]) ->
         #{
             id => sidechain_tracer,
             start => {sidechain_tracer, start_link, [[]]}
+        },
+        #{
+            id => sidechain_sysmon,
+            start => {sidechain_sysmon, start_link, [[]]}
         }
     ],
     {ok, {SupFlags, ChildSpecs}}.
