@@ -37,6 +37,10 @@ init([]) ->
             start => {sidechain_sender, start_link, [[]]}
         },
         #{
+            id => sidechain_conductor,
+            start => {sidechain_conductor, start_link, [[]]}
+        },
+        #{
             id => sidechain_sampler,
             start => {sidechain_sampler, start_link, [[]]}
         },

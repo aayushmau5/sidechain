@@ -9,7 +9,6 @@
 -define(SERVER, ?MODULE).
 % 50ms
 -define(WINDOW_TIME, 50).
--define(SCALE, [440.0, 523.25, 587.33, 659.25, 783.99]).
 
 start_link(Args) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
@@ -28,11 +27,19 @@ handle_cast(_Msg, State) ->
 
 handle_info(window, #{spawns := Spawns, exits := Exits} = State) ->
     if
-        max(Spawns, Exits) > 0 -> ?LOG_INFO("spawns=~p exits=~p", [Spawns, Exits]);
+        max(Spawns, Exits) > 0 ->
+            ?LOG_INFO("spawns=~p exits=~p", [Spawns, Exits]);
+        true ->
+            ok
+    end,
+    if
+        Spawns > 0 -> sidechain_conductor:event({spawns, Spawns});
         true -> ok
     end,
-    play(Spawns, 1.0),
-    play(Exits, 0.5),
+    if
+        Exits > 0 -> sidechain_conductor:event({exits, Exits});
+        true -> ok
+    end,
     erlang:send_after(?WINDOW_TIME, self(), window),
     {noreply, State#{spawns := 0, exits := 0}};
 handle_info(resume, #{session := Session} = State) ->
@@ -58,12 +65,3 @@ handle_info({trace, _Child, exit, _Reason}, #{exits := Exits} = State) ->
     {noreply, State#{exits := Exits + 1}};
 handle_info(_Msg, State) ->
     {noreply, State}.
-
-play(0, _Octave) ->
-    ok;
-play(Count, Octave) ->
-    Freq = lists:nth(count_to_step(Count) + 1, ?SCALE) * Octave,
-    sidechain_sender:send(<<"/s_new">>, [<<"ping">>, -1, 0, 1, <<"freq">>, Freq]).
-
-count_to_step(Count) ->
-    min(trunc(math:log10(Count)), 4).

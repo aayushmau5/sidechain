@@ -11,7 +11,7 @@ start_link(Args) ->
 
 init(_Args) ->
     erlang:system_monitor(self(), [{long_gc, 20}]),
-    {ok, #{breath_until => erlang:monotonic_time(millisecond)}}.
+    {ok, #{}}.
 
 handle_call(_Msg, _From, State) ->
     {reply, {error, unsupported_call}, State}.
@@ -19,14 +19,8 @@ handle_call(_Msg, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info({monitor, _Pid, long_gc, _Info}, #{breath_until := BreathUntil} = State) ->
-    Now = erlang:monotonic_time(millisecond),
-    if
-        Now > BreathUntil ->
-            sidechain_sender:send(<<"/s_new">>, [<<"breath">>, -1, 0, 1]),
-            {noreply, State#{breath_until := Now + 3000}};
-        true ->
-            {noreply, State}
-    end;
+handle_info({monitor, _Pid, long_gc, _Info}, State) ->
+    sidechain_conductor:event(long_gc),
+    {noreply, State};
 handle_info(_Msg, State) ->
     {noreply, State}.
