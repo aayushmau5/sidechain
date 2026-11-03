@@ -3,7 +3,7 @@
 -moduledoc "Passes collector events to the current mode and plays the notes it returns.".
 % Grid: 125ms = a sixteenth note at 120 BPM
 
--export([start_link/1, event/1]).
+-export([start_link/1, event/1, switch/1]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2]).
 
 -define(SERVER, ?MODULE).
@@ -25,6 +25,9 @@ start_link(Args) ->
 event(Event) ->
     gen_server:cast(?SERVER, {event, Event}).
 
+switch(Mode) ->
+    gen_server:call(?SERVER, {switch_mode, Mode}).
+
 init(_Args) ->
     % restart begins from silence
     sidechain_sender:send(<<"/n_free">>, [?GROUP]),
@@ -36,6 +39,22 @@ init(_Args) ->
     schedule_wake(Next),
     {ok, #state{mode = ?MODE, mode_state = ModeState, next_tick = Next}}.
 
+handle_call({switch_mode, Mode}, _From, State) ->
+    case code:ensure_loaded(Mode) of
+        {module, M} ->
+            case erlang:function_exported(M, init, 1) of
+                true ->
+                    {Notes, ModeState} = M:init(?GROUP),
+                    play(erlang:monotonic_time(millisecond) + ?LOOKAHEAD, [
+                        {<<"/g_freeAll">>, [?GROUP]} | Notes
+                    ]),
+                    {reply, ok, State#state{mode = M, mode_state = ModeState}};
+                false ->
+                    {reply, {error, unknown_mode}, State}
+            end;
+        {error, _Reason} ->
+            {reply, {error, unknown_mode}, State}
+    end;
 handle_call(_Msg, _From, State) ->
     {reply, {error, unsupported_call}, State}.
 
