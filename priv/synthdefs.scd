@@ -20,4 +20,12 @@
         sig = LPF.ar(PinkNoise.ar, 400 + (env * 1600));
         Out.ar(0, sig * env * amp ! 2);
     }).add;
+
+    SynthDef(\drone, { |freq = 55, cutoff = 400, amp = 0.15|
+        var sig;
+        sig = Saw.ar(freq * [1, 1.005]);
+        sig = LPF.ar(sig, cutoff.lag(2));
+        sig = sig * Line.kr(0, 1, 3);
+        Out.ar(0, sig * amp);
+    }).add;
 )

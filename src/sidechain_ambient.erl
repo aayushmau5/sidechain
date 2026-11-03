@@ -3,16 +3,30 @@
 -moduledoc "Background mode: loose chimes over a drone.".
 
 -export([init/1, handle_event/2, tick/1]).
+
 -define(SCALE, [440.0, 523.25, 587.33, 659.25, 783.99]).
+% 32MB
+-define(MEMORY_BASE, (32 * 1024 * 1024)).
 
 init(Group) ->
-    {[{<<"/s_new">>, [<<"pulse">>, 1000, 0, Group, <<"rate">>, 1.0]}], #{
-        group => Group, breath_until => 0
-    }}.
+    {
+        [
+            {<<"/s_new">>, [<<"pulse">>, 1000, 0, Group, <<"rate">>, 1.0]},
+            {<<"/s_new">>, [<<"drone">>, 1001, 0, Group, <<"freq">>, 55.0, <<"cutoff">>, 400.0]}
+        ],
+        #{
+            group => Group, breath_until => 0
+        }
+    }.
 
-handle_event({levels, #{utilization := W}}, State) ->
-    Rate = utilization_to_rate(W),
-    {[{<<"/n_set">>, [1000, <<"rate">>, Rate]}], State};
+handle_event({levels, #{utilization := W, memory := M}}, State) ->
+    {
+        [
+            {<<"/n_set">>, [1000, <<"rate">>, utilization_to_rate(W)]},
+            {<<"/n_set">>, [1001, <<"cutoff">>, memory_to_cutoff(M)]}
+        ],
+        State
+    };
 handle_event({spawns, N}, #{group := Group} = State) ->
     {[play(N, 1.0, Group)], State};
 handle_event({exits, N}, #{group := Group} = State) ->
@@ -37,6 +51,12 @@ utilization_to_rate(W) ->
     Clamped = min(W, 1.0),
     Bpm = 50 + Clamped * 70,
     Bpm / 60.
+
+-spec memory_to_cutoff(non_neg_integer()) -> float().
+memory_to_cutoff(Bytes) ->
+    Doublings = math:log2(max(Bytes, 1) / ?MEMORY_BASE),
+    Clamped = min(max(Doublings, 0.0), 8.0),
+    200 + Clamped * 400.
 
 play(Count, Octave, Group) ->
     Freq = lists:nth(count_to_step(Count) + 1, ?SCALE) * Octave,

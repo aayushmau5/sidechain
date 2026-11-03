@@ -26,7 +26,7 @@ handle_info(tick, #{scheduler_sample := S1} = State) ->
     S2 = scheduler:sample(),
     Utilization = scheduler:utilization(S1, S2),
     {weighted, W, _} = lists:keyfind(weighted, 1, Utilization),
-    sidechain_conductor:event({levels, #{utilization => W}}),
+    sidechain_conductor:event({levels, #{utilization => W, memory => erlang:memory(total)}}),
     erlang:send_after(?TICK_RATE, self(), tick),
     {noreply, State#{scheduler_sample := S2}};
 handle_info(_Msg, State) ->
