@@ -17,7 +17,7 @@ init(_Args) ->
     Session = trace:session_create(sidechain_tracer, self(), []),
     trace:process(Session, all, true, [procs]),
     erlang:send_after(?WINDOW_TIME, self(), window),
-    {ok, #{session => Session, spawns => 0, exits => 0, tripped => false}}.
+    {ok, #{session => Session, spawns => 0, exits => 0, crashes => 0, tripped => false}}.
 
 handle_call(_Msg, _From, State) ->
     {reply, {error, not_allowed}, State}.
@@ -25,10 +25,10 @@ handle_call(_Msg, _From, State) ->
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-handle_info(window, #{spawns := Spawns, exits := Exits} = State) ->
+handle_info(window, #{spawns := Spawns, exits := Exits, crashes := Crashes} = State) ->
     if
         max(Spawns, Exits) > 0 ->
-            ?LOG_INFO("spawns=~p exits=~p", [Spawns, Exits]);
+            ?LOG_INFO("spawns=~p exits=~p crashes=~p", [Spawns, Exits, Crashes]);
         true ->
             ok
     end,
@@ -40,8 +40,12 @@ handle_info(window, #{spawns := Spawns, exits := Exits} = State) ->
         Exits > 0 -> sidechain_conductor:event({exits, Exits});
         true -> ok
     end,
+    if
+        Crashes > 0 -> sidechain_conductor:event({crashes, Crashes});
+        true -> ok
+    end,
     erlang:send_after(?WINDOW_TIME, self(), window),
-    {noreply, State#{spawns := 0, exits := 0}};
+    {noreply, State#{spawns := 0, exits := 0, crashes := 0}};
 handle_info(resume, #{session := Session} = State) ->
     trace:process(Session, all, true, [procs]),
     {noreply, State#{tripped := false}};
@@ -61,7 +65,17 @@ handle_info(
     end;
 handle_info({trace, _Parent, spawn, _Child, _MFA}, #{spawns := Spawns} = State) ->
     {noreply, State#{spawns := Spawns + 1}};
-handle_info({trace, _Child, exit, _Reason}, #{exits := Exits} = State) ->
-    {noreply, State#{exits := Exits + 1}};
+handle_info({trace, _Child, exit, Reason}, #{exits := Exits, crashes := Crashes} = State) ->
+    case is_crash(Reason) of
+        true -> {noreply, State#{exits := Exits + 1, crashes := Crashes + 1}};
+        false -> {noreply, State#{exits := Exits + 1}}
+    end;
 handle_info(_Msg, State) ->
     {noreply, State}.
+
+is_crash(normal) -> false;
+is_crash(shutdown) -> false;
+is_crash({shutdown, _}) -> false;
+% kill is a crash on purpose
+is_crash(killed) -> true;
+is_crash(_Reason) -> true.

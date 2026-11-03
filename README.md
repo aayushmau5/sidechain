@@ -29,3 +29,9 @@ $ oscsend 127.0.0.1 57110 /n_set isf 1000 gate 0.0
 $ oscsend 127.0.0.1 57110 /n_free i 1000
 $ oscsend 127.0.0.1 57110 /g_freeAll i 1
 ```
+
+## Ambitions
+
+- Use with supersonic (wasm based oscsynth) to run this thing on a website over LV
+- Visuals on browser
+- Integrate with Touchdesigner for visuals (local)
