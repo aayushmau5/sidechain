@@ -4,9 +4,24 @@
 
 -export([init/1, handle_event/2, tick/1]).
 
+-define(PAD, 2000).
+-define(CHORDS, [
+    {220.0, 261.63, 329.63},
+    {174.61, 220.0, 261.63},
+    {196.0, 261.63, 329.63},
+    {196.0, 246.94, 293.66}
+]).
+
 init(Group) ->
-    {[], #{
-        group => Group, step => 0, utilization => 0, spawns => 0, exits => 0
+    {[{<<"/s_new">>, [<<"pad">>, ?PAD, 0, Group]}], #{
+        group => Group,
+        step => 0,
+        utilization => 0,
+        spawns => 0,
+        exits => 0,
+        chord => 0,
+        stab_pending => false,
+        chord_pending => false
     }}.
 
 handle_event({levels, #{utilization := W}}, State) ->
@@ -15,6 +30,10 @@ handle_event({spawns, N}, #{spawns := Spawns} = State) ->
     {[], State#{spawns := Spawns + N}};
 handle_event({exits, N}, #{exits := Exits} = State) ->
     {[], State#{exits := Exits + N}};
+handle_event({crashes, _N}, State) ->
+    {[], State#{stab_pending := true}};
+handle_event({restart, _Id}, State) ->
+    {[], State#{chord_pending := true}};
 handle_event(_Event, State) ->
     {[], State}.
 
@@ -22,7 +41,10 @@ tick(#{step := Step} = State) ->
     KickNotes = kick(State),
     {HatNotes, State1} = hat(State),
     {SnareNotes, State2} = snare(State1),
-    {KickNotes ++ HatNotes ++ SnareNotes, State2#{step := (Step + 1) rem 16}}.
+    {StabNotes, State3} = stab(State2),
+    {ChordNotes, State4} = chord(State3),
+    Notes = KickNotes ++ HatNotes ++ SnareNotes ++ StabNotes ++ ChordNotes,
+    {Notes, State4#{step := (Step + 1) rem 16}}.
 
 kick(#{step := Step, utilization := W, group := Group}) ->
     case lists:member(Step, kick_steps(W)) of
@@ -48,4 +70,17 @@ snare(#{step := Step, exits := Exits, group := Group} = State) when
 ->
     {[{<<"/s_new">>, [<<"snare">>, -1, 0, Group]}], State#{exits := 0}};
 snare(State) ->
+    {[], State}.
+
+stab(#{stab_pending := true, group := Group} = State) ->
+    {[{<<"/s_new">>, [<<"stab">>, -1, 0, Group]}], State#{stab_pending := false}};
+stab(State) ->
+    {[], State}.
+
+chord(#{step := 0, chord_pending := true, chord := Chord} = State) ->
+    Next = (Chord + 1) rem length(?CHORDS),
+    {F1, F2, F3} = lists:nth(Next + 1, ?CHORDS),
+    Note = {<<"/n_set">>, [?PAD, <<"f1">>, F1, <<"f2">>, F2, <<"f3">>, F3]},
+    {[Note], State#{chord := Next, chord_pending := false}};
+chord(State) ->
     {[], State}.

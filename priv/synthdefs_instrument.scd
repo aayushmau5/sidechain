@@ -21,4 +21,18 @@
         sig = (noise * 0.7) + (tone * 0.3);
         Out.ar(0, sig * env * amp ! 2);
     }).add;
+
+    SynthDef(\pad, { |f1 = 220, f2 = 261.63, f3 = 329.63, amp = 0.08|
+        var freqs, sig;
+        freqs = Lag.kr([f1, f2, f3], 0.1);
+        sig = Mix(LPF.ar(Saw.ar(freqs), 1200));
+        Out.ar(0, sig * amp ! 2);
+    }).add;
+
+    SynthDef(\stab, { |freq = 233.08, amp = 0.3|
+        var env, sig;
+        env = EnvGen.kr(Env.perc(0.005, 0.3), doneAction: 2);
+        sig = (Saw.ar(freq) * 8).tanh;
+        Out.ar(0, sig * env * amp ! 2);
+    }).add;
 )
