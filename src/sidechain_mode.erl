@@ -6,6 +6,9 @@
     {levels, map()}
     | {spawns, non_neg_integer()}
     | {exits, non_neg_integer()}
+    | {crashes, non_neg_integer()}
+    | {sends, #{pid() => pos_integer()}}
+    | {restart, term()}
     | long_gc.
 
 -export_type([note/0, event/0]).

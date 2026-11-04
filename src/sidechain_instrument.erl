@@ -5,6 +5,7 @@
 -export([init/1, handle_event/2, tick/1]).
 
 -define(PAD, 2000).
+-define(SCALE, [440.0, 523.25, 587.33, 659.25, 783.99]).
 -define(CHORDS, [
     {220.0, 261.63, 329.63},
     {174.61, 220.0, 261.63},
@@ -21,7 +22,8 @@ init(Group) ->
         exits => 0,
         chord => 0,
         stab_pending => false,
-        chord_pending => false
+        chord_pending => false,
+        pending_sends => #{}
     }}.
 
 handle_event({levels, #{utilization := W}}, State) ->
@@ -30,6 +32,8 @@ handle_event({spawns, N}, #{spawns := Spawns} = State) ->
     {[], State#{spawns := Spawns + N}};
 handle_event({exits, N}, #{exits := Exits} = State) ->
     {[], State#{exits := Exits + N}};
+handle_event({sends, Counts}, #{pending_sends := Pending} = State) ->
+    {[], State#{pending_sends := maps:merge(Pending, Counts)}};
 handle_event({crashes, _N}, State) ->
     {[], State#{stab_pending := true}};
 handle_event({restart, _Id}, State) ->
@@ -43,8 +47,9 @@ tick(#{step := Step} = State) ->
     {SnareNotes, State2} = snare(State1),
     {StabNotes, State3} = stab(State2),
     {ChordNotes, State4} = chord(State3),
-    Notes = KickNotes ++ HatNotes ++ SnareNotes ++ StabNotes ++ ChordNotes,
-    {Notes, State4#{step := (Step + 1) rem 16}}.
+    {MelodyNotes, State5} = melody(State4),
+    Notes = KickNotes ++ HatNotes ++ SnareNotes ++ StabNotes ++ ChordNotes ++ MelodyNotes,
+    {Notes, State5#{step := (Step + 1) rem 16}}.
 
 kick(#{step := Step, utilization := W, group := Group}) ->
     case lists:member(Step, kick_steps(W)) of
@@ -84,3 +89,11 @@ chord(#{step := 0, chord_pending := true, chord := Chord} = State) ->
     {[Note], State#{chord := Next, chord_pending := false}};
 chord(State) ->
     {[], State}.
+
+melody(#{pending_sends := Pending, group := Group} = State) ->
+    Notes = [melody_note(Pid, Group) || Pid <- maps:keys(Pending)],
+    {Notes, State#{pending_sends := #{}}}.
+
+melody_note(Pid, Group) ->
+    Freq = lists:nth(erlang:phash2(Pid, 5) + 1, ?SCALE),
+    {<<"/s_new">>, [<<"ping">>, -1, 0, Group, <<"freq">>, Freq]}.
