@@ -44,6 +44,10 @@ init([]) ->
             id => sidechain_collectors_sup,
             start => {sidechain_collectors_sup, start_link, []},
             type => supervisor
+        },
+        #{
+            id => sidechain_visuals,
+            start => {sidechain_visuals, start_link, [[]]}
         }
     ],
     {ok, {SupFlags, ChildSpecs}}.

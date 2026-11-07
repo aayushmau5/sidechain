@@ -61,6 +61,7 @@ handle_call(_Msg, _From, State) ->
 
 handle_cast({event, Event}, #state{mode = Mode, mode_state = ModeState} = State) ->
     {Notes, NewModeState} = Mode:handle_event(Event, ModeState),
+    sidechain_visuals:event(Event),
     play(erlang:monotonic_time(millisecond) + ?LOOKAHEAD, Notes),
     {noreply, State#state{mode_state = NewModeState}};
 handle_cast(_Msg, State) ->
