@@ -11,56 +11,34 @@ Sidechain converts your BEAM's metrics into sounds using OSC.
 
 ```
 sampler ─┐
-tracer  ─┼─> conductor ─> mode ─> OSC ─> sender -> scsynth (UDP 127.0.0.1:57110)
+tracer  ─┼─> conductor ─> mode ─> OSC ─> sender ─> scsynth (UDP 127.0.0.1:57110)
 sysmon  ─┘
 ```
 
-- **Collectors** count what the node does in short windows and send small summaries. The sampler reads scheduler utilization and memory every 100ms. The tracer counts spawns, exits and crashes. Sysmon reports long garbage collections.
-- **The conductor** keeps a clock of sixteenth notes at 120 bpm and passes each summary to the current mode.
-- **A mode** turns summaries into notes. Ambient is a calm background. Instrument is a beat you play by stressing the node.
-- **The sender** sends the notes to scsynth as OSC bundles, timed about 100ms ahead so they play on time.
+Collectors count what the node does and send short summaries. The conductor ticks at 120 bpm and asks the current mode what to play: ambient hums in the background, instrument is played by stressing the node.
 
 ### Working with remote node
 
-Tracing only works from inside the node being traced, so the collectors move to the target. The conductor and sender stay on your machine.
+Tracing must run inside the traced node, so `attach` pushes the collector code to the target and runs it there. The sound stays on your machine.
 
 ```
-observer                                 target
---------                                 ------
+observer                        target
 attach(target)
-  - push collector code ─────────────────> loaded in memory, nothing on disk
-  - stop local collectors
-  - start agent ─────────────────────────> agent starts the collectors
-               <───────────────────────── ok
-
-conductor <──────── summaries ─────────── collectors
-
+  push code, start agent ─────> agent starts collectors
+conductor <──── summaries ───── collectors
 detach()
-  - stop ────────────────────────────────> agent stops the collectors and
-                                         removes its handler, env and code
-  - restart local collectors
+  stop ───────────────────────> agent removes its code and leaves
 ```
 
-If the observer stops or the network drops, the agent cleans up the target by itself.
-
-## Installations
-
-- SuperCollider, for `scsynth` and `sclang`.
-- liblo, for `oscsend` (optional).
+## Setup
 
 ```bash
 brew install --cask supercollider # scsynth & sclang
-
-brew install liblo # oscsend
+brew install liblo                # oscsend
+rebar3 compile
 ```
 
-## Build
-
-    $ rebar3 compile
-
-## SuperCollider
-
-Supercollider synthdefs are present in `priv/synthdefs_ambient.scd` & `priv/synthdefs_instrument.scd`
+Boot the server in the SuperCollider IDE and run `priv/synthdefs_ambient.scd` and `priv/synthdefs_instrument.scd`. This should ping:
 
 ```bash
 oscsend 127.0.0.1 57110 /s_new siii ping -1 0 1
@@ -72,66 +50,32 @@ oscsend 127.0.0.1 57110 /s_new siii ping -1 0 1
 rebar3 shell
 ```
 
-Ambient mode starts on its own. To switch modes:
-
 ```erlang
 sidechain_conductor:switch(sidechain_instrument).
-sidechain_conductor:switch(sidechain_ambient).
+sidechain_load:start().              % workers for kill and ring
+sidechain_load:kill(1).              % stab, then a chord change
+sidechain_load:burst(100000).        % hi-hats
+sidechain_load:ring(8, 250).         % melody
+sidechain_load:alloc(10000000).      % long GC
 ```
-
-## What you hear
-
-| Signal | Ambient | Instrument |
-|---|---|---|
-| Scheduler utilization | Heartbeat speed | More kicks per bar |
-| Memory | Drone gets brighter | Not yet |
-| Long GC | A slow breath | Not yet |
-| Spawns | Chimes | Hi-hat |
-| Exits | Lower chimes | Snare on the backbeat |
-| Crash | One out-of-key note | Distorted stab |
-| Supervisor restart | That note resolves | Chord change |
-| Messages from watched processes | Off | One note per process |
-
-## Perform
-
-```erlang
-sidechain_load:start().              % start 4 supervised workers
-sidechain_load:kill(1).              % crash worker 1: stab, then chord change
-sidechain_load:burst(100000).        % spawn 100,000 short processes
-sidechain_load:busy(2000).           % keep every scheduler busy for 2s
-sidechain_load:crash_loop(5, 2000).  % kill worker 1 five times, 2s apart
-sidechain_load:ring(8, 250).         % pass a token around the workers, a note per hop
-sidechain_load:alloc(10000000).      % hold about 300MB for 2s, triggers a long GC
-sidechain_tracer:watch(my_server).   % give a registered process a melody
-```
-
-`kill/1` and `ring/2` need `start/0` first.
 
 ## Remote node
 
 ```bash
 rebar3 shell --sname observer
+erl -sname target                    # in another terminal
 ```
-
-```bash
-erl -sname target
-```
-
-In the observer's shell, use the name the target's prompt shows:
 
 ```erlang
 sidechain_remote:attach('target@yourhost').
 sidechain_remote:detach().
 ```
 
-- Both nodes need the same cookie. On one machine they share `~/.erlang.cookie`.
-- The target needs `runtime_tools`. A plain `erl` has it. A release must include it.
+Both nodes need the same cookie. The target needs `runtime_tools`, which a plain `erl` has.
 
-## Supercollider OSC commands
+## SuperCollider OSC commands
 
 ```bash
-$ oscsend 127.0.0.1 57110 
-
 $ oscsend 127.0.0.1 57110 /dumpOSC i 1 # direct dump what it received
 
 $ oscsend 127.0.0.1 57110 /s_new siii default 1000 0 1
