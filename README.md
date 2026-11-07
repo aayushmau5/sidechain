@@ -5,9 +5,11 @@ sidechain
 
 Hear your BEAM.
 
-Sidechain converts your BEAM's metrics into sounds using OSC.
+Sidechain converts your BEAM's metrics into sounds (& visuals) using OSC.
 
-[sidechain + touchdesigner via osc](demo.mp4)
+https://github.com/user-attachments/assets/4d2162a3-0cf7-4be3-8e23-18dcf711a629
+
+*sidechain + touchdesigner via osc*
 
 ## How it works
 
