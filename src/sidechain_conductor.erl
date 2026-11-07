@@ -23,7 +23,8 @@ start_link(Args) ->
     gen_server:start_link({local, ?SERVER}, ?MODULE, Args, []).
 
 event(Event) ->
-    gen_server:cast(?SERVER, {event, Event}).
+    Node = application:get_env(sidechain, conductor_node, node()),
+    gen_server:cast({?SERVER, Node}, {event, Event}).
 
 switch(Mode) ->
     gen_server:call(?SERVER, {switch_mode, Mode}).

@@ -103,6 +103,8 @@ handle_info(_Msg, State) ->
 is_crash(normal) -> false;
 is_crash(shutdown) -> false;
 is_crash({shutdown, _}) -> false;
+is_crash({Ref, return, _Result}) when is_reference(Ref) -> false;
+is_crash(cancel_setup_timer) -> false;
 % kill is a crash on purpose
 is_crash(killed) -> true;
 is_crash(_Reason) -> true.

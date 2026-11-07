@@ -41,16 +41,9 @@ init([]) ->
             start => {sidechain_conductor, start_link, [[]]}
         },
         #{
-            id => sidechain_sampler,
-            start => {sidechain_sampler, start_link, [[]]}
-        },
-        #{
-            id => sidechain_tracer,
-            start => {sidechain_tracer, start_link, [[]]}
-        },
-        #{
-            id => sidechain_sysmon,
-            start => {sidechain_sysmon, start_link, [[]]}
+            id => sidechain_collectors_sup,
+            start => {sidechain_collectors_sup, start_link, []},
+            type => supervisor
         }
     ],
     {ok, {SupFlags, ChildSpecs}}.
