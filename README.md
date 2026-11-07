@@ -7,7 +7,7 @@ Hear your BEAM.
 
 Sidechain converts your BEAM's metrics into sounds using OSC.
 
-# How it works
+## How it works
 
 ```
 sampler ─┐
@@ -20,7 +20,7 @@ sysmon  ─┘
 - **A mode** turns summaries into notes. Ambient is a calm background. Instrument is a beat you play by stressing the node.
 - **The sender** sends the notes to scsynth as OSC bundles, timed about 100ms ahead so they play on time.
 
-## Working with remote node
+### Working with remote node
 
 Tracing only works from inside the node being traced, so the collectors move to the target. The conductor and sender stay on your machine.
 
@@ -42,8 +42,6 @@ detach()
 ```
 
 If the observer stops or the network drops, the agent cleans up the target by itself.
-
-# Setup
 
 ## Installations
 
@@ -68,7 +66,7 @@ Supercollider synthdefs are present in `priv/synthdefs_ambient.scd` & `priv/synt
 oscsend 127.0.0.1 57110 /s_new siii ping -1 0 1
 ```
 
-# Usage
+## Usage
 
 ```bash
 rebar3 shell
@@ -129,7 +127,7 @@ sidechain_remote:detach().
 - Both nodes need the same cookie. On one machine they share `~/.erlang.cookie`.
 - The target needs `runtime_tools`. A plain `erl` has it. A release must include it.
 
-# Supercollider OSC commands
+## Supercollider OSC commands
 
 ```bash
 $ oscsend 127.0.0.1 57110 
