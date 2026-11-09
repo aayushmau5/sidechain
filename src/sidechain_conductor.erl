@@ -16,7 +16,10 @@
 -record(state, {
     mode,
     mode_state,
-    next_tick
+    next_tick,
+    signals,
+    pending,
+    sampled_at
 }).
 
 start_link(Args) ->
@@ -38,7 +41,14 @@ init(_Args) ->
     play(Now + ?LOOKAHEAD, Notes),
     Next = Now + ?START_MARGIN,
     schedule_wake(Next),
-    {ok, #state{mode = ?MODE, mode_state = ModeState, next_tick = Next}}.
+    {ok, #state{
+        mode = ?MODE,
+        mode_state = ModeState,
+        next_tick = Next,
+        signals = new_signals(),
+        pending = zero_pending(),
+        sampled_at = Now
+    }}.
 
 handle_call({switch_mode, Mode}, _From, State) ->
     case code:ensure_loaded(Mode) of
@@ -61,9 +71,8 @@ handle_call(_Msg, _From, State) ->
 
 handle_cast({event, Event}, #state{mode = Mode, mode_state = ModeState} = State) ->
     {Notes, NewModeState} = Mode:handle_event(Event, ModeState),
-    sidechain_visuals:event(Event),
     play(erlang:monotonic_time(millisecond) + ?LOOKAHEAD, Notes),
-    {noreply, State#state{mode_state = NewModeState}};
+    {noreply, track(Event, State#state{mode_state = NewModeState})};
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
@@ -76,6 +85,8 @@ handle_info(tick, #state{mode = Mode, mode_state = ModeState, next_tick = Next} 
 handle_info(_Msg, State) ->
     {noreply, State}.
 
+%% Internal
+
 schedule_wake(BeatTime) ->
     % ticks 100ms early
     erlang:send_after(BeatTime - ?LOOKAHEAD, self(), tick, [{abs, true}]).
@@ -87,3 +98,59 @@ play(At, Notes) ->
 
 unix_micros(MonotonicMs) ->
     (MonotonicMs + erlang:time_offset(millisecond)) * 1000.
+
+track({levels, Levels}, #state{signals = Signals, pending = Pending, sampled_at = Then} = State) ->
+    Now = erlang:monotonic_time(millisecond),
+    Readings = maps:merge(Levels, rates(Pending, max(Now - Then, 1))),
+    NewSignals = update_signals(Readings, Signals),
+    sidechain_visuals:signals(NewSignals),
+    State#state{
+        signals = NewSignals,
+        pending = zero_pending(),
+        sampled_at = Now
+    };
+track({spawns, N}, State) ->
+    add_pending(spawns, N, State);
+track({exits, N}, State) ->
+    add_pending(exits, N, State);
+track(_Event, State) ->
+    State.
+
+rates(Pending, ElapsedMs) ->
+    maps:map(fun(_Name, Count) -> Count * 1000 / ElapsedMs end, Pending).
+
+new_signals() ->
+    maps:map(fun(_Name, Scale) -> sidechain_signal:new(Scale) end, scales()).
+
+update_signals(Readings, Signals) ->
+    maps:map(
+        fun(Name, Signal) ->
+            case Readings of
+                #{Name := Reading} -> sidechain_signal:update(Reading, Signal);
+                #{} -> Signal
+            end
+        end,
+        Signals
+    ).
+
+add_pending(Name, N, #state{pending = Pending} = State) ->
+    State#state{pending = maps:update_with(Name, fun(Old) -> Old + N end, Pending)}.
+
+zero_pending() -> #{spawns => 0, exits => 0}.
+
+scales() ->
+    #{
+        utilization => {linear, 0, 1},
+        run_queue => {log, 0, 3},
+        processes => {log, 1, 6},
+        reductions => {log, 4, 9},
+        gc => {log, 1, 5},
+        gc_words => {log, 4, 9},
+        io => {log, 3, 8},
+        memory => {log, 7, 10},
+        memory_processes => {log, 7, 10},
+        memory_binary => {log, 5, 9},
+        memory_ets => {log, 5, 9},
+        spawns => {log, 0, 5},
+        exits => {log, 0, 5}
+    }.
